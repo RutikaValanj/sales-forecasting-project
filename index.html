@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Sales Prediction</title>
+  <style>
+    body { font-family: Arial; max-width: 700px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+    h1 { color: #1F4E79; }
+    .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    label { font-weight: bold; display: block; margin-top: 12px; }
+    input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+    button { background: #1F4E79; color: white; padding: 12px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin-top: 20px; width: 100%; }
+    button:hover { background: #2E74B5; }
+    #result { margin-top: 20px; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; display: none; }
+    .success { background: #d5f0e0; color: #1e6b3c; border: 1px solid #1e6b3c; }
+    .error { background: #fce4d6; color: #c55a11; border: 1px solid #c55a11; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🛒 Product Sales Prediction</h1>
+  <div class='card'>
+    <h2>Enter Store Details</h2>
+    <div class='grid'>
+      <div>
+        <label>Store Type (0-3):</label>
+        <input type='number' id='store_type' value='0' min='0' max='3'>
+      </div>
+      <div>
+        <label>Location Type (0-2):</label>
+        <input type='number' id='location_type' value='0' min='0' max='2'>
+      </div>
+      <div>
+        <label>Region Code (0-4):</label>
+        <input type='number' id='region_code' value='0' min='0' max='4'>
+      </div>
+      <div>
+        <label>Number of Orders:</label>
+        <input type='number' id='orders' value='50' min='0'>
+      </div>
+      <div>
+        <label>Year:</label>
+        <input type='number' id='year' value='2023' min='2015' max='2030'>
+      </div>
+      <div>
+        <label>Month (1-12):</label>
+        <input type='number' id='month' value='6' min='1' max='12'>
+      </div>
+      <div>
+        <label>Day (1-31):</label>
+        <input type='number' id='day' value='15' min='1' max='31'>
+      </div>
+      <div>
+        <label>Day of Week (0=Mon, 6=Sun):</label>
+        <input type='number' id='dow' value='2' min='0' max='6'>
+      </div>
+    </div>
+    <label>Holiday?</label>
+    <select id='holiday'>
+      <option value='0'>No</option>
+      <option value='1'>Yes</option>
+    </select>
+    <label>Discount offered?</label>
+    <select id='discount'>
+      <option value='0'>No</option>
+      <option value='1'>Yes</option>
+    </select>
+    <button onclick='predict()'>Predict Sales</button>
+    <div id='result'></div>
+  </div>
+  <script>
+  async function predict() {
+    const month = parseInt(document.getElementById('month').value);
+    const day   = parseInt(document.getElementById('day').value);
+    const dow   = parseInt(document.getElementById('dow').value);
+    const week  = Math.ceil((day + new Date(parseInt(document.getElementById('year').value), month-1, 1).getDay()) / 7);
+    const quarter = Math.ceil(month / 3);
+    const season  = month <= 2 || month == 12 ? 1 : month <= 5 ? 2 : month <= 8 ? 3 : 4;
+    const payload = {
+      Store_Type_encoded:    parseInt(document.getElementById('store_type').value),
+      Location_Type_encoded: parseInt(document.getElementById('location_type').value),
+      Region_Code_encoded:   parseInt(document.getElementById('region_code').value),
+      Holiday:  parseInt(document.getElementById('holiday').value),
+      Discount: parseInt(document.getElementById('discount').value),
+      Year: parseInt(document.getElementById('year').value),
+      Month: month, Day: day, DayOfWeek: dow,
+      WeekOfYear: week, IsWeekend: dow >= 5 ? 1 : 0,
+      IsMonthStart: day <= 5 ? 1 : 0, IsMonthEnd: day >= 25 ? 1 : 0,
+      Quarter: quarter, Season: season,
+      Order: parseInt(document.getElementById('orders').value)
+    };
+    const res  = await fetch('/predict', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    const el   = document.getElementById('result');
+    el.style.display = 'block';
+    if (data.status === 'success') {
+      el.className = 'success';
+      el.innerHTML = '✅ Predicted Sales: <strong>$' + data.predicted_sales.toLocaleString() + '</strong>';
+    } else {
+      el.className = 'error';
+      el.innerHTML = '❌ Error: ' + data.message;
+    }
+  }
+  </script>
+</body>
+</html>
